@@ -1,0 +1,2 @@
+# Multi-agent A2C for Matching Pennies
+The purpose of this experiment was to check whether A2C would find the mixed Nash equilibrium in this game. High batch sizes do approach this equilibrium, but there appears to be bias in the estimation the payoffs are unbalanced (e.g. -1,1 payoff for no match and 2,-2 payoff for a match).

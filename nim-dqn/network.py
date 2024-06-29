@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# Deep Q Network
 class DQN(nn.Module):
     def __init__(self, max_state, output_size):
         super().__init__()
