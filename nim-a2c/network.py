@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # Deep Q Network
 class ActorCritic(nn.Module):
     def __init__(self, max_state, output_size):
@@ -12,13 +13,11 @@ class ActorCritic(nn.Module):
             nn.Linear(self.max_state + 1, 32),
             nn.ReLU(),
             nn.Linear(32, output_size),
-            nn.Softmax(dim = -1)
+            nn.Softmax(dim=-1),
         )
 
         self.critic = nn.Sequential(
-            nn.Linear(self.max_state + 1, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1)
+            nn.Linear(self.max_state + 1, 32), nn.ReLU(), nn.Linear(32, 1)
         )
 
     def forward(self, x):
@@ -26,4 +25,3 @@ class ActorCritic(nn.Module):
         value = self.critic(one_hotted)
         policy_dist = self.actor(one_hotted)
         return value, policy_dist
-

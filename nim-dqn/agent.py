@@ -7,8 +7,17 @@ from collections import deque
 
 device = torch.device("cpu")
 
+
 class DQNAgent:
-    def __init__(self, gamma = 0.95, epsilon = 1, epsilon_decay = 0.99, epsilon_min = 0.01, lr = 1e-3, maxlen = 2000):
+    def __init__(
+        self,
+        gamma=0.95,
+        epsilon=1,
+        epsilon_decay=0.99,
+        epsilon_min=0.01,
+        lr=1e-3,
+        maxlen=2000,
+    ):
         self.gamma = gamma
 
         self.epsilon = epsilon
@@ -57,7 +66,7 @@ class DQNAgent:
         # Calculate target Q values
         with torch.no_grad():
             next_q_values = self.target_net(next_states)
-            next_max_q_values = torch.max(next_q_values, dim = 1).values.detach()
+            next_max_q_values = torch.max(next_q_values, dim=1).values.detach()
 
         target_q_values = rewards + (self.gamma * next_max_q_values * (1 - dones))
 

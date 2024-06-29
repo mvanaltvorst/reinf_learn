@@ -9,8 +9,9 @@ from rich.pretty import pprint
 
 device = torch.device("cpu")
 
+
 class A2CAgent:
-    def __init__(self, gamma = 0.95, lr = 1e-3, maxlen = 2000):
+    def __init__(self, gamma=0.95, lr=1e-3, maxlen=2000):
         self.gamma = gamma
 
         self.model = ActorCritic(21, 3)
@@ -28,7 +29,7 @@ class A2CAgent:
         _, policy_dist = self.model(tensor_state)
         # action = policy_dist.sample() + 1
         # action = np.random.choice(list(range(3)), p = policy_dist.detach().numpy().squeeze()) + 1
-        dist = torch.distributions.Categorical(probs = policy_dist)
+        dist = torch.distributions.Categorical(probs=policy_dist)
         action = dist.sample().detach().numpy()[0] + 1
         return action
 
@@ -46,7 +47,6 @@ class A2CAgent:
         next_states = torch.tensor([x[3] for x in minibatch]).to(device)
         dones = torch.tensor([x[4] for x in minibatch]).to(device, dtype=torch.float32)
 
-
         values, policy_dists = self.model(states)
         next_values, _ = self.model(next_states)
 
@@ -56,7 +56,7 @@ class A2CAgent:
         log_probs = torch.log(policy_dists.gather(1, actions - 1))
         actor_loss = -(log_probs * advantages.detach()).mean()
 
-        critic_loss = (advantages ** 2).mean()
+        critic_loss = (advantages**2).mean()
 
         loss = actor_loss + 0.5 * critic_loss
 
