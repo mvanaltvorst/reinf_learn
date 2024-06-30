@@ -1,6 +1,8 @@
 # Reinforcement learning experiments
 Learning RL by implementing and analysing different RL methods.
 
+![RL Snake game visualisation](./snake-a2c/snake_game_visualisation.gif)
+
 | Directory | Game | Number of agents | RL method |
 |-|-|-|-
 | [nim-dqn](./nim-dqn/) | [Nim-21](https://en.wikipedia.org/wiki/Nim#The_21_game) | 2 | Deep Q-network |
