@@ -18,7 +18,6 @@ class Nim21Game:
     def step(self, action):
         assert action in self.action_space
 
-        # Convert action to number of objects removed (action 0 -> remove 1, action 1 -> remove 2, action 2 -> remove 3)
         self.remaining -= action
 
         # Check if the game is over
