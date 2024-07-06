@@ -1,5 +1,5 @@
 # Reinforcement learning experiments
-Learning RL by implementing and analysing different RL methods.
+Learning RL by implementing and analysing different RL methods from scratch.
 
 ![RL Snake game visualisation](./snake-a2c/snake_game_visualisation.gif)
 
