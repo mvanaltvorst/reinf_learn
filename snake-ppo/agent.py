@@ -1,13 +1,10 @@
 from network import Actor, Critic
-import random
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
-from collections import deque
 import numpy as np
-from rich.pretty import pprint
 from pathlib import Path
-import pickle
 from ppomemory import PPOMemory
 
 device = torch.device("cpu")
@@ -22,6 +19,7 @@ class PPOAgent:
         policy_clip=0.2,
         batch_size=64,
         n_epochs=10,
+        entropy_coef=0.01,
         lr=1e-3,
         weight_decay=1e-5,
     ):
@@ -31,6 +29,7 @@ class PPOAgent:
         self.policy_clip = policy_clip
         self.batch_size = batch_size
         self.n_epochs = n_epochs
+        self.entropy_coef = entropy_coef
         self.lr = lr
 
         self.actor = Actor()
@@ -52,6 +51,7 @@ class PPOAgent:
 
     def act(self, state):
         state = torch.tensor(state, dtype=torch.float32)
+        state = state.reshape(1, *state.shape)
         dist = self.actor(state)
         # We need the value to store in the memory
         val = self.critic(state).detach().numpy().item()
@@ -92,8 +92,14 @@ class PPOAgent:
 
                 advantage[t] = a_t
 
-            advantage = torch.tensor(advantage)
-            values = torch.tensor(values)
+            advantage = torch.tensor(advantage, dtype = torch.float32)
+
+            # Normalize the advantage which helps with training stability
+            # advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+
+            values = torch.tensor(values, dtype = torch.float32)
+
+            returns = advantage + values
 
             for batch in batches:
                 states = torch.tensor(state_arr[batch], dtype=torch.float32)
@@ -104,7 +110,7 @@ class PPOAgent:
                 critic_value = self.critic(states)
 
                 new_probs = dist.log_prob(actions)
-                prob_ratio = new_probs.exp() / old_probs.exp()
+                prob_ratio = (new_probs - old_probs).exp()
 
                 weighted_probs = advantage[batch] * prob_ratio
                 weighted_clipped_probs = (
@@ -113,8 +119,12 @@ class PPOAgent:
                 )
                 actor_loss = -torch.min(weighted_probs, weighted_clipped_probs).mean()
 
-                returns = advantage[batch] + values[batch]
-                critic_loss = ((returns - critic_value)**2).mean()
+                entropy = dist.entropy().mean()
+                actor_loss -= self.entropy_coef * entropy
+
+                # returns = advantage[batch] + values[batch]
+                # critic_loss = ((returns - critic_value)**2).mean()
+                critic_loss = F.mse_loss(critic_value, returns[batch].reshape(-1, 1))
 
                 total_loss = actor_loss + 0.5 * critic_loss
                 self.actor_optimizer.zero_grad()
@@ -123,38 +133,7 @@ class PPOAgent:
                 self.actor_optimizer.step()
                 self.critic_optimizer.step()
 
-
         self.memory.clear_memory()
-
-            # minibatch = random.sample(self.memory, batch_size)
-
-            # states = torch.tensor([x[0] for x in minibatch], dtype=torch.float32).to(device)
-            # actions = torch.tensor([x[1] for x in minibatch]).unsqueeze(1).to(device)
-            # rewards = torch.tensor([x[2] for x in minibatch]).to(
-            #     device, dtype=torch.float32
-            # )
-            # next_states = torch.tensor([x[3] for x in minibatch], dtype=torch.float32).to(
-            #     device
-            # )
-            # dones = torch.tensor([x[4] for x in minibatch]).to(device, dtype=torch.float32)
-
-            # values, policy_dists = self.model(states)
-            # next_values, _ = self.model(next_states)
-
-            # returns = rewards + self.gamma * next_values.squeeze() * (1 - dones)
-            # advantages = returns - values.squeeze()
-
-            # log_probs = torch.log(policy_dists.gather(1, actions))
-            # actor_loss = -(log_probs * advantages.detach()).mean()
-
-            # critic_loss = (advantages**2).mean()
-
-            # loss = actor_loss + 0.5 * critic_loss
-
-            # self.optimizer.zero_grad()
-            # loss.backward()
-            # self.optimizer.step()
-
 
     def save(self, path: Path | str):
         if isinstance(path, str):
@@ -181,12 +160,6 @@ class PPOAgent:
     @classmethod
     def load(cls, path: Path | str):
         state = torch.load(path)
-        # agent = cls(gamma=state["gamma"], lr=state["lr"], maxlen=state["maxlen"])
-        # agent.actor.load_state_dict(state["actor_state_dict"])
-        # agent.optimizer.load_state_dict(state["actor_optimizer_state_dict"])
-        # agent.memory = deque(state["memory"], maxlen=agent.memory.maxlen)
-        # print(f"Agent loaded from {path}")
-        # return agent
         agent = cls(
             gamma=state["gamma"],
             alpha=state["alpha"],
@@ -203,4 +176,3 @@ class PPOAgent:
         agent.memory = state["memory"]
         print(f"Agent loaded from {path}")
         return agent
-

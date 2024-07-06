@@ -29,7 +29,7 @@ class A2CAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
-        _, policy_dist = self.model(torch.tensor(state, dtype = torch.float32))
+        _, policy_dist = self.model(torch.tensor(state, dtype=torch.float32))
         dist = torch.distributions.Categorical(probs=policy_dist)
         action = dist.sample().detach().numpy().item()
         return action
@@ -40,12 +40,14 @@ class A2CAgent:
 
         minibatch = random.sample(self.memory, batch_size)
 
-        states = torch.tensor([x[0] for x in minibatch], dtype = torch.float32).to(device)
+        states = torch.tensor([x[0] for x in minibatch], dtype=torch.float32).to(device)
         actions = torch.tensor([x[1] for x in minibatch]).unsqueeze(1).to(device)
         rewards = torch.tensor([x[2] for x in minibatch]).to(
             device, dtype=torch.float32
         )
-        next_states = torch.tensor([x[3] for x in minibatch], dtype = torch.float32).to(device)
+        next_states = torch.tensor([x[3] for x in minibatch], dtype=torch.float32).to(
+            device
+        )
         dones = torch.tensor([x[4] for x in minibatch]).to(device, dtype=torch.float32)
 
         values, policy_dists = self.model(states)
@@ -54,7 +56,7 @@ class A2CAgent:
         returns = rewards + self.gamma * next_values.squeeze() * (1 - dones)
         advantages = returns - values.squeeze()
 
-        log_probs = torch.log(policy_dists.gather(1, actions))
+        log_probs = torch.log(policy_dists.gather(-1, actions))
         actor_loss = -(log_probs * advantages.detach()).mean()
 
         critic_loss = (advantages**2).mean()
@@ -73,12 +75,12 @@ class A2CAgent:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         state = {
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'gamma': self.gamma,
-            'lr': self.lr,
-            'maxlen': self.maxlen,
-            'memory': list(self.memory)
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "gamma": self.gamma,
+            "lr": self.lr,
+            "maxlen": self.maxlen,
+            "memory": list(self.memory),
         }
         torch.save(state, path)
         print(f"Agent saved to {path}")
@@ -86,9 +88,9 @@ class A2CAgent:
     @classmethod
     def load(cls, path: Path | str):
         state = torch.load(path)
-        agent = cls(gamma=state['gamma'], lr=state['lr'], maxlen = state['maxlen'])
-        agent.model.load_state_dict(state['model_state_dict'])
-        agent.optimizer.load_state_dict(state['optimizer_state_dict'])
-        agent.memory = deque(state['memory'], maxlen=agent.memory.maxlen)
+        agent = cls(gamma=state["gamma"], lr=state["lr"], maxlen=state["maxlen"])
+        agent.model.load_state_dict(state["model_state_dict"])
+        agent.optimizer.load_state_dict(state["optimizer_state_dict"])
+        agent.memory = deque(state["memory"], maxlen=agent.memory.maxlen)
         print(f"Agent loaded from {path}")
-        return agent 
+        return agent

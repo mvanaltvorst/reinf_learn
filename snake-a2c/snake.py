@@ -1,46 +1,57 @@
 import numpy as np
 from queue import Queue
-import torch
+import random
+
 
 class SnakeGame:
     def __init__(self, width: int, height: int, max_steps: int = 2000):
-        # Action space: 0 (north), 1 (east), 2 (south), 3 (west)
-        self.action_space = [0, 1, 2, 3]
+        # Action space: 0 (left), 1 (straight), 2 (right)
+        self.action_space = [0, 1, 2]
         self.width = width
         self.height = height
         self.max_steps = max_steps
         self.reset()
 
     def reset(self):
-        start_x, start_y = np.random.randint(self.width), np.random.randint(self.height)
+        # Place the head, ensuring there's space for a second segment
+        head_x = np.random.randint(1, self.width - 1)
+        head_y = np.random.randint(1, self.height - 1)
         self.tail = Queue()
-        self.tail.put((start_x, start_y))
-        self.current_direction = np.random.choice([0, 1, 2, 3])
+        self.tail.put((head_x, head_y))
+
+        # Find valid positions for the second segment
+        valid_positions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        dx, dy = random.choice(valid_positions)
+        second_x, second_y = head_x + dx, head_y + dy
+        self.tail.put((second_x, second_y))
+
+        self.direction = (dx, dy)  # Current direction
         self.steps = 0
 
-        # spawn an apple on a location that does not intersect with the current head
+        # Spawn an apple on a location that does not intersect with the current snake
         while True:
             self.apple_x, self.apple_y = (
                 np.random.randint(self.width),
                 np.random.randint(self.height),
             )
-            if self.apple_x != start_x or self.apple_y != start_y:
+            if (self.apple_x, self.apple_y) not in self.tail.queue:
                 break
-        
+
         return self._get_state()
 
     def step(self, action):
         assert action in self.action_space
-        self.current_direction = action
+
+        # Convert relative action to new direction
+        if action == 0:  # Turn left
+            self.direction = (-self.direction[1], self.direction[0])
+        elif action == 2:  # Turn right
+            self.direction = (self.direction[1], -self.direction[0])
+        # action == 1 means go straight, so we don't change direction
+
         cur_x, cur_y = self.tail.queue[-1]
-        if action == 0:
-            cur_y -= 1
-        elif action == 1:
-            cur_x += 1
-        elif action == 2:
-            cur_y += 1
-        else:
-            cur_x -= 1
+        cur_x += self.direction[0]
+        cur_y += self.direction[1]
 
         self.steps += 1
 
@@ -79,75 +90,81 @@ class SnakeGame:
 
     def _get_state(self):
         head_x, head_y = self.tail.queue[-1]
-        
-        # Current features
-        apple_delta_x = self.apple_x - head_x
-        apple_delta_y = self.apple_y - head_y
-        
-        # New features
-        # Danger straight ahead
-        danger_straight = self._is_collision(head_x, head_y, self.current_direction)
-        
-        # Danger to the right
-        danger_right = self._is_collision(head_x, head_y, (self.current_direction + 1) % 4)
-        
-        # Danger to the left
-        danger_left = self._is_collision(head_x, head_y, (self.current_direction - 1) % 4)
-        
-        # Current direction
-        dir_left = self.current_direction == 3
-        dir_right = self.current_direction == 1
-        dir_up = self.current_direction == 0
-        dir_down = self.current_direction == 2
-        
-        # Snake length
-        snake_length = len(self.tail.queue)
-        
+        apple_x, apple_y = self.apple_x, self.apple_y
+
+        # Define the relative directions
+        straight = self.direction
+        left = (-self.direction[1], self.direction[0])
+        right = (self.direction[1], -self.direction[0])
+
+        diff_x, diff_y = apple_x - head_x, apple_y - head_y
+
+        # check the relative distance w.r.t. the direction
+        straight_apple_cos = straight[0] * diff_x + straight[1] * diff_y
+        left_apple_cos = left[0] * diff_x + left[1] * diff_y
+
+        # Cosine similarity needs to be normalised.
+        # Add 1 to the sqrt denominator to avoid division by zero
+        straight_apple_cos /= np.sqrt(
+            (diff_x**2 + diff_y**2) * (straight[0] ** 2 + straight[1] ** 2) + 1
+        )
+        left_apple_cos /= np.sqrt(
+            (diff_x**2 + diff_y**2) * (left[0] ** 2 + left[1] ** 2) + 1
+        )
+
+        def find_dist(
+            cur_x, cur_y, dx, dy
+        ) -> tuple[int, bool, bool]:  # dist, is_tail, is_apple
+            dist = 0
+            is_tail = False
+            is_apple = False
+            while True:
+                cur_x += dx
+                cur_y += dy
+                dist += 1
+                if (
+                    cur_x < 0
+                    or cur_x >= self.width
+                    or cur_y < 0
+                    or cur_y >= self.height
+                ):
+                    break
+                if (cur_x, cur_y) in self.tail.queue:
+                    is_tail = True
+                    break
+                if cur_x == self.apple_x and cur_y == self.apple_y:
+                    is_apple = True
+                    break
+
+            return dist, is_tail, is_apple
+
+        dist_left, is_tail_left, is_apple_left = find_dist(
+            head_x, head_y, left[0], left[1]
+        )
+        dist_straight, is_tail_straight, is_apple_straight = find_dist(
+            head_x, head_y, straight[0], straight[1]
+        )
+        dist_right, is_tail_right, is_apple_right = find_dist(
+            head_x, head_y, right[0], right[1]
+        )
+
         return [
-            apple_delta_x, apple_delta_y,
-            danger_straight, danger_right, danger_left,
-            dir_left, dir_right, dir_up, dir_down,
-            snake_length
+            1 / dist_left,  # Easy normalisation
+            is_tail_left,
+            is_apple_left,
+            1 / dist_straight,  # Easy normalisation
+            is_tail_straight,
+            is_apple_straight,
+            1 / dist_right,  # Easy normalisation
+            is_tail_right,
+            is_apple_right,
+            # Direction to apple
+            straight_apple_cos,
+            left_apple_cos,
         ]
 
-    def _is_collision(self, x, y, direction):
-        if direction == 0:  # Up
-            y -= 1
-        elif direction == 1:  # Right
-            x += 1
-        elif direction == 2:  # Down
-            y += 1
-        elif direction == 3:  # Left
-            x -= 1
-        
-        # Check if out of bounds
-        if x < 0 or x >= self.width or y < 0 or y >= self.height:
-            return True
-        
-        # Check if collision with snake body
-        if (x, y) in self.tail.queue:
-            return True
-        
-        return False
-
-    def get_action_mask(self):
-        mask = [1, 1, 1, 1]  # All actions initially allowed
-        head_x, head_y = self.tail.queue[-1]
-        
-        # Prevent 180-degree turns
-        if self.current_direction == 0:  # Up
-            mask[2] = 0  # Can't go down
-        elif self.current_direction == 1:  # Right
-            mask[3] = 0  # Can't go left
-        elif self.current_direction == 2:  # Down
-            mask[0] = 0  # Can't go up
-        elif self.current_direction == 3:  # Left
-            mask[1] = 0  # Can't go right
-        
-        return torch.tensor(mask, dtype=torch.float32)
-
     def get_score(self):
-        return len(self.tail.queue) - 1
+        return len(self.tail.queue) - 2
 
     def render(self):
         mapping = {

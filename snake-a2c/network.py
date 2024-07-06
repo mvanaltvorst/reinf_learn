@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, input_size: int = 10, output_size: int = 4):
+    def __init__(self, input_size: int = 11, output_size: int = 3):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
