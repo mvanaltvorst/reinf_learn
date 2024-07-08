@@ -59,7 +59,7 @@ class SnakeGame:
                     np.random.randint(self.width),
                     np.random.randint(self.height),
                 )
-                if (self.apple_x, self.apple_y) not in self.tail.queue:
+                if (self.apple_x, self.apple_y) not in self.tail.queue and cur_x != self.apple_x and cur_y != self.apple_y:
                     break
         else:
             # Get rid of far tail section
