@@ -67,7 +67,7 @@ class A2CAgent:
         loss.backward()
         self.optimizer.step()
 
-        return loss.item()
+        return loss.item(), actor_loss.item(), critic_loss.item()
 
     def save(self, path: Path | str):
         if isinstance(path, str):
