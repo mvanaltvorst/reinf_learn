@@ -61,13 +61,15 @@ class A2CAgent:
 
         critic_loss = (advantages**2).mean()
 
-        loss = actor_loss + 0.5 * critic_loss
+        entropy = -(policy_dists * torch.log(policy_dists + 1e-8)).sum(dim=-1).mean()
+
+        loss = actor_loss + 0.5 * critic_loss - 1e-3 * entropy.mean()
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        return loss.item(), actor_loss.item(), critic_loss.item()
+        return loss.item(), actor_loss.item(), critic_loss.item(), entropy.item()
 
     def save(self, path: Path | str):
         if isinstance(path, str):
