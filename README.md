@@ -1,7 +1,7 @@
 # Reinforcement learning experiments
 Learning RL by implementing and analysing different RL methods from scratch.
 
-![RL Snake game visualisation](./snake-a2c/snake_game_visualisation.gif)
+![RL Snake game visualisation](./snake-a2c/figures/snake_game_visualisation.gif)
 
 | Directory | Game | Number of agents | RL method |
 |-|-|-|-
@@ -14,3 +14,6 @@ Learning RL by implementing and analysing different RL methods from scratch.
 ## MLFlow
 
 I'm also using this project to learn more about [MLFlow](https://mlflow.org/docs/latest/getting-started/intro-quickstart/index.html). Some of the train scripts depend on an actively running tracking server. Please check [MLFlow documentation](https://mlflow.org/docs/latest/getting-started/intro-quickstart/index.html) on how to start a tracking server and set the `MLFLOW_URI` environment variable to the correct tracking server URL.
+
+![MLflow performance metrics](./snake-a2c/figures/mlflow_reg.png)
+
